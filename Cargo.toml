@@ -1,0 +1,51 @@
+[package]
+name = "occp-proxy"
+version = "0.1.0"
+edition = "2021"
+description = "GitHub Copilot authentication and API proxy server"
+license = "AGPL-3.0"
+
+[dependencies]
+# Proxy framework
+pingora = { version = "0.6", features = ["openssl", "proxy"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+
+# HTTP client for OAuth
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.9"
+
+# Config paths
+directories = "6"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Browser opening for OAuth
+open = "5"
+
+# Security
+subtle = "2"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Bytes
+bytes = "1"
+
+# DNS resolver with TTL caching
+hickory-resolver = "0.25"
