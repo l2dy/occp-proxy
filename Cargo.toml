@@ -7,7 +7,7 @@ license = "AGPL-3.0"
 
 [dependencies]
 # Proxy framework
-pingora = { version = "0.6", features = ["openssl", "proxy"] }
+pingora = { version = "0.7", features = ["openssl", "proxy"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
