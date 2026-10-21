@@ -108,7 +108,7 @@ fn cmd_serve(port: u16, bind: String, api_key: Option<String>) -> anyhow::Result
     };
 
     let auth_state = Arc::new(RwLock::new(auth_state));
-    let proxy = CopilotProxy::new(auth_state, config);
+    let proxy = CopilotProxy::new(auth_state, config)?;
 
     // Create Pingora server
     let mut server = Server::new(None)?;

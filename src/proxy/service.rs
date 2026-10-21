@@ -26,17 +26,17 @@ pub struct CopilotProxy {
 }
 
 impl CopilotProxy {
-    pub fn new(auth_state: Arc<RwLock<Option<AuthState>>>, config: Config) -> Self {
+    pub fn new(auth_state: Arc<RwLock<Option<AuthState>>>, config: Config) -> anyhow::Result<Self> {
         // Create DNS resolver with system config (respects /etc/resolv.conf)
         // The resolver caches records according to their TTL
         let resolver = Resolver::builder_tokio()
-            .expect("Failed to read system DNS config")
-            .build();
-        Self {
+            .map_err(|err| anyhow::anyhow!("Failed to read system DNS config: {err}"))?
+            .build()?;
+        Ok(Self {
             auth_state,
             config,
             resolver,
-        }
+        })
     }
 
     /// Validate API key using constant-time comparison
