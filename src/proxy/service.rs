@@ -84,6 +84,11 @@ impl CopilotProxy {
             .any(|(m, p)| m.eq_ignore_ascii_case(method) && *p == path)
     }
 
+    /// Strip `/v1/` prefix from path.
+    fn strip_v1_prefix(path: &str) -> Option<String> {
+        path.strip_prefix("/v1/").map(|path| format!("/{path}"))
+    }
+
     /// Inspect request body for vision and agent detection
     fn inspect_body(endpoint: &str, body: &[u8]) -> (bool, bool) {
         let Ok(json): Result<serde_json::Value, _> = serde_json::from_slice(body) else {
@@ -198,9 +203,10 @@ impl ProxyHttp for CopilotProxy {
         // Get method and path
         let method = req.method.as_str();
         let path = req.uri.path();
+        let endpoint = Self::strip_v1_prefix(path).unwrap_or_else(|| path.to_string());
 
         // Check endpoint allowlist
-        if !Self::is_endpoint_allowed(method, path) {
+        if !Self::is_endpoint_allowed(method, &endpoint) {
             return session
                 .respond_error(404)
                 .await
@@ -219,7 +225,7 @@ impl ProxyHttp for CopilotProxy {
         }
 
         // Store endpoint for body inspection
-        ctx.endpoint = path.to_string();
+        ctx.endpoint = endpoint;
 
         Ok(false)
     }
@@ -281,6 +287,17 @@ impl ProxyHttp for CopilotProxy {
         upstream_request: &mut RequestHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
+        if let Some(stripped_path) = Self::strip_v1_prefix(upstream_request.uri.path()) {
+            let path_and_query = match upstream_request.uri.query() {
+                Some(query) => format!("{stripped_path}?{query}"),
+                None => stripped_path,
+            };
+            let uri = path_and_query.parse().map_err(|_| {
+                Error::explain(ErrorType::InvalidHTTPHeader, "invalid rewritten URI")
+            })?;
+            upstream_request.set_uri(uri);
+        }
+
         let auth = self.auth_state.read().await;
         let auth_state = auth.as_ref().expect("Auth state checked in request_filter");
 
@@ -371,5 +388,19 @@ impl ProxyHttp for CopilotProxy {
             ctx.is_vision,
             ctx.is_agent
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CopilotProxy;
+
+    #[test]
+    fn normalizes_chat_completions_path() {
+        assert_eq!(
+            CopilotProxy::strip_v1_prefix("/v1/chat/completions").as_deref(),
+            Some("/chat/completions")
+        );
+        assert_eq!(CopilotProxy::strip_v1_prefix("/chat/completions"), None);
     }
 }
