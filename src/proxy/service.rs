@@ -17,6 +17,7 @@ use tokio::sync::RwLock;
 const ALLOWED_ENDPOINTS: &[(&str, &str)] = &[
     ("POST", "/chat/completions"),
     ("POST", "/responses"),
+    ("POST", "/v1/messages"),
 ];
 
 pub struct CopilotProxy {
@@ -86,7 +87,11 @@ impl CopilotProxy {
 
     /// Strip `/v1/` prefix from path.
     fn strip_v1_prefix(path: &str) -> Option<String> {
-        path.strip_prefix("/v1/").map(|path| format!("/{path}"))
+        match path {
+            "/v1/chat/completions" => Some("/chat/completions".to_string()),
+            "/v1/responses" => Some("/responses".to_string()),
+            _ => None,
+        }
     }
 
     /// Inspect request body for vision and agent detection
@@ -402,5 +407,15 @@ mod tests {
             Some("/chat/completions")
         );
         assert_eq!(CopilotProxy::strip_v1_prefix("/chat/completions"), None);
+        assert_eq!(CopilotProxy::strip_v1_prefix("/v1/messages"), None);
+        assert_eq!(
+            CopilotProxy::strip_v1_prefix("/v1/responses").as_deref(),
+            Some("/responses")
+        );
+    }
+
+    #[test]
+    fn allows_v1_messages_endpoint() {
+        assert!(CopilotProxy::is_endpoint_allowed("POST", "/v1/messages"));
     }
 }
