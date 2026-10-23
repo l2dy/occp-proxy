@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use occp_proxy::{Config, CopilotProxy, DeviceFlowAuth, GitHubDomain, TokenStorage};
 use pingora::prelude::*;
 use pingora::proxy::http_proxy_service;
+use pingora::server::configuration::ServerConf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -33,6 +34,10 @@ enum Commands {
         /// API key for proxy authentication
         #[arg(long, env = "OCCP_PROXY_API_KEY")]
         api_key: Option<String>,
+
+        /// Grace period before shutdown's final phase, in seconds
+        #[arg(long, default_value_t = 300)]
+        grace_period_seconds: u64,
     },
 
     /// Authenticate with GitHub Copilot
@@ -66,9 +71,10 @@ fn main() -> anyhow::Result<()> {
             port,
             bind,
             api_key,
+            grace_period_seconds,
         } => {
             // Run synchronously - Pingora manages its own runtime
-            cmd_serve(port, bind, api_key)?;
+            cmd_serve(port, bind, api_key, grace_period_seconds)?;
         }
         Commands::Login { domain } => {
             // Only login needs async runtime for OAuth flow
@@ -91,7 +97,12 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn cmd_serve(port: u16, bind: String, api_key: Option<String>) -> anyhow::Result<()> {
+fn cmd_serve(
+    port: u16,
+    bind: String,
+    api_key: Option<String>,
+    grace_period_seconds: u64,
+) -> anyhow::Result<()> {
     let storage = TokenStorage::new()?;
 
     // Load auth state
@@ -110,8 +121,11 @@ fn cmd_serve(port: u16, bind: String, api_key: Option<String>) -> anyhow::Result
     let auth_state = Arc::new(RwLock::new(auth_state));
     let proxy = CopilotProxy::new(auth_state, config)?;
 
-    // Create Pingora server
-    let mut server = Server::new(None)?;
+    // Create Pingora server with the configured graceful-shutdown grace period.
+    let mut server_config = ServerConf::new()
+        .ok_or_else(|| anyhow::anyhow!("Failed to create Pingora server configuration"))?;
+    server_config.grace_period_seconds = Some(grace_period_seconds);
+    let mut server = Server::new_with_opt_and_conf(None, server_config);
     server.bootstrap();
 
     let mut service = http_proxy_service(&server.configuration, proxy);

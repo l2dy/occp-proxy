@@ -36,9 +36,16 @@ occp-proxy serve
 # With custom port and API key
 occp-proxy serve --port 8080 --api-key "your-secret-key"
 
+# Allow up to 2 minutes for in-flight requests to finish after SIGTERM
+occp-proxy serve --grace-period-seconds 120
+
 # API key can also be set via environment variable
 OCCP_PROXY_API_KEY="your-secret-key" occp-proxy serve
 ```
+
+The graceful shutdown grace period defaults to 300 seconds (5 minutes) and can be
+customized with `--grace-period-seconds`. This applies to graceful shutdowns such
+as `SIGTERM`; `SIGINT` continues to use Pingora's quick-shutdown behavior.
 
 ### Other commands
 
