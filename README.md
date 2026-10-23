@@ -57,10 +57,11 @@ occp-proxy config   # Show configuration directory
 
 ## Proxy endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/chat/completions` | Chat completions API |
-| POST | `/responses` | Responses API (for codex models) |
+| Method | Paths | Description |
+|--------|-------|-------------|
+| POST | `/chat/completions`, `/v1/chat/completions` | Chat completions API |
+| POST | `/responses`, `/v1/responses` | Responses API (for codex models) |
+| POST | `/v1/messages` | Messages API |
 
 ## Troubleshooting
 
